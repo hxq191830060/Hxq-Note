@@ -1,7 +1,7 @@
 JDK提供的动态代理——基于接口  
 cglib提供的动态代理——基于类  
 ***
-###一，MethodInterceptor接口  
+**一，MethodInterceptor接口**   
 ```
 public interface MethodInterceptor extends Callback {
     Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable;
@@ -11,7 +11,7 @@ method：被代理方法的Method对象
 objects:参数表
 methodProxy:对方法的代理，methodProxy.invokeSuper()表示对被代理方法的调用
 ```  
-###二，Enhancer  
+**二，Enhancer**   
 **1.** 
 ```
 public void setSuperclass(Class superclass)
@@ -27,7 +27,7 @@ MethodInterceptor接口是Callback的子接口，这里一般传入一个MethodI
 public Object create();
 返回动态代理对象
 ```
-###三，实现动态代理  
+**三，实现动态代理**   
 **1.** 自定义一个实现了MethodInterceptor接口的类
 ```
 public class FoodMethodInterceptor implements MethodInterceptor {
