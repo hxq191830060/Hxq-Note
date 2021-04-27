@@ -14,11 +14,11 @@
 加入这句  http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd  
 ">
 ```  
-2.配置切面  
+2.配置切面
 ><<aop:config>>
 > ><<aop:aspect>>——配置切面
 > > > ref——切面类的id  
-> > ><<aop>aop>——设置advance为切面类中的哪个方法,设置通知类型,设置Pointcut(切点表达式)  
+> > ><<aop>aop>——设置advance为切面类中的哪个方法,设置通知类型,设置Pointcut(切点表达式)
 
 **<aop<aop>>的格式如下**  
 <aop:通知类型 method="xx" pointcut="切点表达式">
@@ -30,6 +30,6 @@
   异常抛出通知 <<aop:throwing>>——  
   最终通知 <<aop:after>>——
 * method——表明advance是切面类中的哪个方法
-* 切点表达式  
+* 切点表达式
 
 <a name="around">**xml环绕通知详解**</a>
