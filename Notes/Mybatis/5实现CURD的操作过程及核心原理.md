@@ -37,11 +37,13 @@
 6. 使用代理对象执行方法  
    我们对代理对象getAll()的调用会被拦截下来，转发给MapperProxy的invoke(),invoke()中会进行如下操作  
    ![alt 属性文本](p/img_3.png)  
-   ①根据主配置库文件中的数据库信息，创建Connection  
+   ①根据SqlSessionFactory读取的主配置库文件中的数据库信息，创建Connection  
    ②根据dao接口的全限定名,找到其对应的映射配置文件,根据转发过来的Method名称,找到对应的CURD标签,从中提取出sql语句和resultType  
    调用connection.preparedStatement(sql)获取PreparedStatement对象  
    ③执行CURD，获得结果集ResultSet   
    ④通过resultType,知道要将ResultSet封装为指定对象  
    通过resultType反射创建对象,由于类的属性名与表的字段名一直,我们可以利用表的字段名反射获取对象中对应的属性,然后赋值
 
-7. 关闭资源
+7. 关闭资源  
+***
+**从上述操作我们可以看出

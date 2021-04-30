@@ -1,6 +1,6 @@
 **一.MyBatis**
 1. Mybatis是持久层框架,通过XML或者注解,将各种Statement配置起来,通过Java对象和Statement中的sql动态参数进行映射生成最终执行的sql语句,最终由Mybatis框架执行sql语句,并将结果映射为java对象  
-2. Mybatis让开发者只需关注sql语句,在其他方面少花心思  
+2. Mybatis避免了几乎所有的jdbc代码和手动参数设置以及获取结果集  
 
 **二.ORM**  
 Object Relational Mapping 对象映射关系  
