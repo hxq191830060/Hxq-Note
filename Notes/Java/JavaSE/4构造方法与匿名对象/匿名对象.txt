@@ -1,0 +1,22 @@
+每次new都会在堆中开辟出一块对象空间
+如果一个对象只使用一次，就可是使用匿名对象，匿名对象还可以作为参数使用
+匿名对象——直接new，没有引用指向它
+
+public class Person {
+    public String name; // 姓名
+    public int age; // 年龄
+    // 定义构造方法，为属性初始化
+    public Person(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+    // 获取信息的方法
+    public void tell() {
+        System.out.println("姓名：" + name + "，年龄：" + age);
+    }
+    public static void main(String[] args) {
+        new Person("张三", 30).tell(); // 匿名对象
+    }
+}
+
+new Persion("张三"，30);会创建一个对象，但是没有任何栈引用指向它，所有使用一次后会被GC(垃圾回收机制)回收
