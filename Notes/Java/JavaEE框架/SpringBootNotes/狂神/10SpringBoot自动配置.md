@@ -1,5 +1,5 @@
 **1. pom.xml**   
-![Alt text](picture/img_1.png)   
+![Alt text](../picture/img_1.png)   
        spring-boot-dependencies为核心依赖，里面管理了大量的Jar包版本   
        我们在pom.xml中导入依赖时，不需要指定版本，就是因为有这些版本库   
    
@@ -28,7 +28,7 @@ public class SpringBootStudyDemoApplication {
 }
 ```
 * @SpringBottApplication——自动配置
-  ![Alt text](picture/img_2.png)    
+  ![Alt text](../picture/img_2.png)    
   AutoConfigurationImportSelector自动导入组件的方法
   
 ```
@@ -89,9 +89,9 @@ private static Map<String, List<String>> loadSpringFactories(@Nullable ClassLoad
 }
 ```   
    **通过上述代码我们可以看到，最后我们要去获取META-INF/spring.factories**,如下图  
-   ![Alt text](picture/img_3.png)   
+   ![Alt text](../picture/img_3.png)   
    spring.factories中的每个类有@Configuration和@Bean——都是配置类      
    所以，自动配置真正实现是从classpath中搜寻所有的META-INF/spring.factories配置文件，将其中所有的配置类,通过反射实例化后加载到Spring容器中    
 
 * SpringApplication.run()
-  ![Alt text](picture/img_4.png) 
+  ![Alt text](../picture/img_4.png) 

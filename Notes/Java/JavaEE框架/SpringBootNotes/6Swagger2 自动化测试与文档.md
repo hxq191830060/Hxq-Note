@@ -1,4 +1,5 @@
 ![Alt text](picture/img.png) 
+***
 1. 引入依赖
 ```
 <!-- 添加swagger2相关功能 -->
@@ -14,41 +15,55 @@
    		<version>2.9.2</version>
    	</dependency>
 ```  
-
+***
 2. 启用并配置 Swagger2 功能  
-   添加一个**配置类**，专门用于配置 Swagger2 相关功能，这样比较清晰点。通过 **@EnableSwagger2 开启Swagger2 功能**  
-   通过 **@Bean 标注的方法**将对 Swagger2 功能的设置放入容器
-```
-@Configuration // 告诉Spring容器，这个类是一个配置类
-@EnableSwagger2 // 启用Swagger2功能
-public class Swagger2Config {
-	/**
-	 * 配置Swagger2相关的bean
-	 */
-	@Bean
-	public Docket createRestApi() {
-		return new Docket(DocumentationType.SWAGGER_2)
-				.apiInfo(apiInfo())
-				.select()
-				.apis(RequestHandlerSelectors.basePackage("com"))// com包下所有API都交给Swagger2管理
-				.paths(PathSelectors.any()).build();
-	}
-	/**
-	 * 此处主要是API文档页面显示信息,可以根据需要修改
-	 */
-	private ApiInfo apiInfo() {
-		return new ApiInfoBuilder()
-				.title("演示项目API") // 标题
-				.description("学习Swagger2的演示项目") // 描述
-				.termsOfServiceUrl("http://www.imooc.com") // 服务网址，一般写公司地址
-				.version("1.0") // 版本
-				.build();
-	}
+   @Configuration——配置类   
+   @EnableSwagger2——启动Swagger2功能
+   @Bean——将Docket对象放入Spring容器    
+```java
+@Configuration//配置类
+@EnableSwagger2//启动Swagger2功能
+public class SwaggerConfiguration {
+    @Bean//自定义的Docket对象要放入Spring容器
+    public Docket getDocket(){
+        //创建一个SwaggerAPI文档对象Docket，内置默认api信息
+        Docket docket= new Docket(DocumentationType.SWAGGER_2);
+        
+        //创建api对象，自定义设置api信息
+        ApiInfo apiInfo=getApiInfo();
+        docket.apiInfo(apiInfo);
+        
+        //SwaggerAPI文档显示该包下的所有内容
+       //select()出现必须有build(),select()和build()之间可以加apis()或paths()
+        docket.select().apis(RequestHandlerSelectors.basePackage("com")).paths(PathSelectors.any()).build();
+        return docket;
+    }
+    
+    public ApiInfo getApiInfo(){
+        //Contact对象存储作者信息——名字，网站，电子邮箱
+        Contact contact=new Contact("黄相淇","url.com","907478820@qq.com");
+        ApiInfo apiInfo = new ApiInfo(
+                "黄相淇的SwaggerAPI文档",//api标题
+                "欢迎来到黄相淇的SwaggerAPI文档",//api描述
+                "1.0", //api版本号
+                "team.url",//组织的URL
+                contact,//Concat对象
+                "Apache 2.0",//文档名称
+                "http://www.apache.org/licenses/LICENSE-2.0",//文档链接
+                new ArrayList<>());
+        return apiInfo;
+    }
 }
 ``` 
-3. 启动项目，然后访问 http://127.0.0.1:8080/swagger-ui.html ，即可打开自动生成的可视化测试页面  
-页面中会显示所有的Controller的信息  
-   
+***
+3. 启动项目，然后访问 http://127.0.0.1:8080/swagger-ui.html ，即可打开自动生成的可视化测试页面，页面会显示Control和Model的信息   
+   ![Alt text](picture/img_5.png)
+
+***
+
 4. 生成API文档——直接在Controller上加注解即可  
    @Api(tags = "商品API")  注解Controller
    @ApiOperation(value = "根据id获取商品信息") 注解服务方法 // 接口文档显示内容
+  
+
+
