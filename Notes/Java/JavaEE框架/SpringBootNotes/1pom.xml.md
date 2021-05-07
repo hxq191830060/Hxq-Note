@@ -12,7 +12,8 @@ SpringBoot项目的pom.xml结构
         <version>2.4.5</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <!--指定我们使用的是SpringBoot以及SpringBoot的版本号-->
+    <!--指定我们使用的是SpringBoot以及SpringBoot的版本号
+        从官网继承来的父依赖-->
 
     <groupId>com.example</groupId>
     <artifactId>SpringbootDemo</artifactId>

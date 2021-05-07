@@ -50,5 +50,5 @@ public class Swagger2Config {
 页面中会显示所有的Controller的信息  
    
 4. 生成API文档——直接在Controller上加注解即可  
-   @Api(tags = "商品API")
-   @ApiOperation(value = "根据id获取商品信息") // 接口文档显示内容
+   @Api(tags = "商品API")  注解Controller
+   @ApiOperation(value = "根据id获取商品信息") 注解服务方法 // 接口文档显示内容
