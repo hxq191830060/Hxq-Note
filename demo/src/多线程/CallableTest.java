@@ -1,11 +1,15 @@
 package 多线程;
 
+import sun.misc.Unsafe;
+
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.AbstractQueuedSynchronizer;
+import java.util.concurrent.locks.Lock;
 
 public class CallableTest {
 
     public static void main(String[]args){
-        Executor executor=Executors.newScheduledThreadPool()
         ExecutorService executor=Executors.newSingleThreadExecutor();
         for(int i=0;i<4;i++){
             Future<Integer>future=executor.submit(new CallableClass(i));
