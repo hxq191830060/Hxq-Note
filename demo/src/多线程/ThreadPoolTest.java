@@ -10,6 +10,7 @@ public class ThreadPoolTest {
 
     public static void main(String[]args){
 
+        ThreadLocal
         ThreadPoolExecutor threadpool=new ThreadPoolExecutor(3,6,60, TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(2));
         for(int i=0;i<6;i++){
             threadpool.execute(new MyThread("线程"+i));
