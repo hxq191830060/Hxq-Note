@@ -6,14 +6,15 @@ import java.util.concurrent.locks.ReentrantLock;
 public class Call1 {
 
     public static void main(String[]args){
-        ReentrantLock
+        ReentrantLock loc=new ReentrantLock(true);
+        loc.unlock();
+        loc.lock();
         for(int i=0;i<10;i++){
             new Thread((Runnable) new Call("线程"+i)).start();
         }
     }
     public static class Call implements Callable<String>{
         String name;
-        ReentrantLock
         public Call(String name){
             this.name=name;
         }
