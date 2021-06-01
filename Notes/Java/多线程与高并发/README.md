@@ -1,4 +1,4 @@
-未整理知识点  
+未整理知识点  （查看https://blog.csdn.net/javazejian和http://concurrent.redspider.group/article/03/16.html）
 * 线程状态   
 * JMM 
 * volitile

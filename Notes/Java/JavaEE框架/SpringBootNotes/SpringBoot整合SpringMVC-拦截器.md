@@ -8,6 +8,7 @@
 自定义拦截器类   
 ①实现接口HandlerInterceptor     
 方法执行顺序：preHandle——>控制器方法——>postHandle——>afterCompletion  
+
 ```java
 public interface HandlerInterceptor {
     //访问控制器方法前执行
@@ -44,3 +45,27 @@ public class HelloWebConfig implements WebMvcConfigurer {
 }
 
 ```
+
+------
+
+**使用拦截器中猜到的坑**   
+
+**preHandle()**在访问控制器方法前执行       
+
+* preHandle()的HttpServletRequest request由请求报文封装而来，    
+
+* request中有一个InputStream——请求报文的二进制流 ，request通过该InputStream将请求报文的内容封装进HttpServletRequest对象   
+
+* 到达拦截器时
+
+  * 如果是GET请求，那么请求报文的全部信息都封装进request中，可以通过request.getParameter()获取请求体的参数   
+
+  * 如果是POST请求，那么请求报文的报文头封装进了request中，请求体并没有封装进request中
+
+    无法通过request.getParameter()获取请求提参数，此时通过request.getInputStream()进行输出，可以发现，输出的内容为请求体内容
+
+* 控制器方法中的@RequestBody或@RequestParam会对request中的InputStream进行读取，读取请求体部分，传递给注解的参数  
+
+* 问题来了，如果是POST请求，现在拦截器需要获取请求体参数，控制器方法也需要获取请求体参数，两者都是通过request中的InputStream来获取请求体参数，但是由于**InputStream只能读一次**，所以如果拦截器中使用InputStream来获取请求体参数，那么控制器方法就无法获取请求体参数，会报错——**Required request body is missing**
+
+* 那么如何解决这个问题呢？
