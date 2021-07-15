@@ -23,10 +23,10 @@
   * data：每个节点都有一个ACL列表，ACL列表 规定了可以对Znode的data做哪些操作
   * children node
 
-* **Zookeeper的数据一致性**
+* **Zookeeper的数据一致性保证**
 
   * 顺序一致性：来自一个客户端的更新操作按照发送的顺序处理
-  * 原子性：节点数据的更新要么都成功，要么都失败，不会只更改一部分data
+  * 原子性：更新操作要么成功，要么失败，不会只完成一部分
   * 系统视图唯一性：client不管连接到哪个服务器，都看到唯一的系统视图（各个服务器的数据一致）
   * 可靠性：一旦更新操作完成，数据将被持久化到服务器上，不会丢失
   * 及时性：Client看到的视图在一定时间范围内是最新的
@@ -86,4 +86,17 @@ Zookeeper以多种方式跟踪事件
 
 
 **Zookeeper Session（重要）**
+
+Client会创建一个handle来与Zookeeper集群建立Session，handle创建完毕后，Client handle处于CONNECTING状态，当Client成功的与任一个服务器建立Session后，Client handle转换为CONNECTED状态，后续的操作中，Clinet handle都处于CONNECTING，CONNECTED两个状态之一。
+
+当一些不可修复的错误发生（Session过期，验证失败等），Client handle的状态转变了CLOSED
+
+
+
+
+
+Zookeeper有两个Thread——IO Thread（SendThread）和EventThread
+
+* SendThread：负责所有的IO操作（NIO），连接服务器，重连，心跳维护，同步方法的响应处理
+* EventTread：负责event回调，异步方法的响应处理
 
