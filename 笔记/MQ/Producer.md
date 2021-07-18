@@ -1,0 +1,3 @@
+
+如何配置Producer的属性  
+创建一个Properties对象，在Properties对象中添加属性，然后通过Properties对象创建KafKaProducer对象
