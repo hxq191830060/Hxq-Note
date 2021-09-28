@@ -1,4 +1,4 @@
-```
+```json
 user  nginx;
 worker_processes  auto;
 
