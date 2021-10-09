@@ -229,10 +229,106 @@ Executors提供两种类型ScheduledExecutorService的构造API(《阿里巴巴J
 
 ![Worker工作流程](../../p/Worker工作流程.png)
 
+#### 4.4 关闭线程池
+
+* **void shutdown()——缓慢关闭**
+
+  1. 取得全局锁，并上锁
+  2. 将线程池的状态修改为 **SHUTDOWN**
+  3. 对线程池中的所有线程调用其interrupt()传递中断信号
+  4. 释放锁
+  5. 调用tryTerminal()尝试终止线程池(只有以下两种情况才有可能成功)
+     * 线程池状态为SHUTDOWN，线程池没有线程，任务队列为空
+     * 线程池状态为STOP，其线程池中无线程
+
+  **调用shutdown()后，线程池的状态变为SHUTDOWN，第5步tryTerminal()大多数情况不会成功**
+
+  **线程池状态变为SHUTDOWN后，线程池不会再接受新的任务，但已经接受的任务仍会继续执行，当所有任务执行完**
+
+  **线程池中的线程检测到线程池状态为SHUTDOWN并且任务队列空了，那么线程会执行退出操作**
+
+  **退出操作中，每个线程都会调用一次tryTerminal()，最后一个消亡的线程调用tryTerminal()就能成功关闭线程池**
+
+* **List<Runnable> shutdownNow()——快速关闭**
+
+  1. 取得全局锁，并上锁
+  2. 将线程池的状态修改为 **STOP**
+  3. 对线程池中的所有线程调用其interrupt()传递中断信号
+  4. 移除任务队列中的所有未执行的任务
+  5. 释放锁
+  6. 调用tryTerminal()尝试终止线程池(只有以下两种情况才有可能成功)
+     * 线程池状态为SHUTDOWN，线程池没有线程，任务队列为空
+     * 线程池状态为STOP，其线程池中无线程
+
+  **shutdownNow()移除任务队列中所有未执行的任务，从而实现快速关闭线程池**
+
+  **线程池中的线程检测到线程池状态为STOP并且任务队列为空，就会执行退出操作**
+
+  **退出操作中，每个线程都会调用一次tryTerminal()，最后一个消亡的线程调用tryTerminal()就能成功关闭线程池**
+
 
 
 ### 5. ScheduledThreadPoolExecutor
 
 * 继承自**ThreadPoolExecutor**，用于在给定的延迟后执行任务or执行定时任务
-
 * 任务队列默认是用 **DelayWorkQueue**
+* 提交任务后，任务封装为**ScheduledFutureTask**后，直接进入任务队列**DelayWorkQueue**，然后由线程从任务队列**DelayWorkQueue**中获取**ScheduledFutureTask**执行
+
+
+
+#### 5.1 任务类图
+
+![Worker工作流程](../../p/ScheduledFutureTask类图.png)
+
+
+
+#### 5.2 任务提交
+
+ScheduledThreadPoolExecutor中
+
+**schedule()**，**scheduleAtFixedRate()**，**scheduleWithFixedDelay()**，**submit()**,**execute()**的逻辑基本相同
+
+接下来以schedule()为例进行讲解
+
+![ScheduledThreadPoolExecutor的schedule()](../../p/ScheduledThreadPoolExecutor的schedule().png)
+
+
+
+**ScheduledThreadPool中，任务封装为ScheduledFutureTask后，直接进入任务队列，然后由线程从任务队列中获取ScheduledFutureTask执行**
+
+![18](../../p/18.png)
+
+#### 5.3 任务的执行
+
+* DelayWorkQueue和ScheduledFutureTask的结构
+
+  ![19](../../p/ScheduledFutureTask任务的执行.png)
+
+* 任务任务执行的步骤
+
+  ![19](../../p/19.png)
+
+  1. 线程从DelayWorkQueue中获取超时的ScheduledFutureTask
+
+     (从queue中获取queue[0]，如果没有会阻塞等待，然后检查任务是否超时,如果任务没超时，会阻塞直到任务超时)
+
+  2. 线程执行任务
+
+  3. 线程修改ScheduledFutureTask的time为下一次执行的时间
+
+  4. 线程将ScheduledFutureTask重新放回DelayWorkQueue
+
+### 
+
+### 6. FutureTask
+
+1. FutureTask可以由调用线程直接执行(FutureTask.run())（这种方式不会创建新的线程），也可以提交给线程池执行
+2. FutureTask跟Future一样，可以控制任务的执行状态，获得任务的执行结果
+
+
+
+#### 6.1 FutureTask状态迁移图
+
+![20](../../p/20.png)
+
+![20](../../p/21.png)
