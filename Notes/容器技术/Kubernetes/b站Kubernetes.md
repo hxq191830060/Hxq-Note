@@ -1069,3 +1069,1022 @@ spec:
 
 
 
+#### PodAffinity
+
+```yaml
+pod:
+  spec:
+    affinity:
+      podAffinity: 
+        requiredDuringSchedulingIgnoredDuringExecution: 
+          namespace: #指定参照Pod的namespace
+          topologyKey: #用于指定调度作用域,如果指定为kubernetes.io/hostname,那么以Node节点为区分范围;如果指定为beta.kubernetes.io/os,以Node节点的操作系统类型来区分
+          labelSelector: #标签选择器
+            matchExpressions: 
+              key: #键
+              value: #值
+              operator: #操作符
+            matchLabels: 
+        preferredDuringSchedulingIgnoredDuringExecution:
+          #同上
+          weight: #权重
+```
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-podaffinity-required
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.17.1
+  affinity:  #亲和性设置
+    podAffinity: #设置pod亲和性
+      requiredDuringSchedulingIgnoredDuringExecution: # 硬限制
+      - labelSelector:
+          matchExpressions: # 匹配env的值在["xxx","yyy"]中的标签
+          - key: podenv
+            operator: In
+            values: ["xxx","yyy"]
+        topologyKey: kubernetes.io/hostname
+#新Pod必须要与拥有标签nodeenv=xxx或者nodeenv=yyy的pod在同一Node上
+```
+
+
+
+#### PodAntAffinity
+
+属性同PodAffinity
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-podantiaffinity-required
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.17.1
+  affinity:  #亲和性设置
+    podAntiAffinity: #设置pod亲和性
+      requiredDuringSchedulingIgnoredDuringExecution: # 硬限制
+      - labelSelector:
+          matchExpressions: # 匹配podenv的值在["pro"]中的标签
+          - key: podenv
+            operator: In
+            values: ["pro"]
+        topologyKey: kubernetes.io/hostname
+#新Pod必须要与拥有标签nodeenv=pro的pod不在同一Node上
+```
+
+### 3.4.4 污点(容忍)调度
+
+我们可以给Node添加**污点**，这样Node与Pod会有一些**互斥行为**
+
+>key=value:effect
+>
+>value是污点标签，effect是描述污点作用，有以下的值
+>
+>- PreferNoSchedule：kubernetes将尽量避免把Pod调度到具有该污点的Node上，除非没有其他节点可调度
+>- NoSchedule：kubernetes将不会把Pod调度到具有该污点的Node上，但不会影响当前Node上已存在的Pod
+>- NoExecute：kubernetes将不会把Pod调度到具有该污点的Node上，同时也会将Node上已存在的Pod驱离
+
+#### **设置污点和去除污点**
+
+```shell
+# 设置污点
+kubectl taint nodes node1 key=value:effect
+
+# 去除污点
+kubectl taint nodes node1 key:effect-
+
+# 去除所有污点
+kubectl taint nodes node1 key-
+```
+
+
+
+#### 容忍
+
+Node通过**污点**拒绝pod调度上去，Pod通过**容忍**忽略拒绝
+
+**容忍属性**
+
+```yaml
+pod:
+  spec:
+    tolerations:
+      key: #要容忍的污点的key
+      value: #要容忍的污点的value
+      operator: #key和value的操作符
+      effect: #对应污点的effect,空代表匹配所有影响
+      tolerationSeconds: #容忍时间,当effect为NoExecute时生效，表示pod在Node上的停留时间
+```
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-toleration
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.17.1
+  tolerations:      # 添加容忍
+  - key: "tag"        # 要容忍的污点的key
+    operator: "Equal" # 操作符
+    value: "heima"    # 容忍的污点的value
+    effect: "NoExecute"   # 添加容忍的规则，这里必须和标记的污点规则相同
+```
+
+
+
+
+
+# 4. Pod控制器
+
+在Kubernetes中，Pod按照创建方式分为两种
+
+* **自主式Pod**：kubernetes直接创建出来的Pod，这种pod删除后就没有了，也不会重建
+* **控制器创建的Pod**：kubernetes通过控制器创建的pod，由控制器控制
+
+
+
+**Pod控制器分为**
+
+- ReplicationController：比较原始的pod控制器，已经被废弃，由ReplicaSet替代
+- ReplicaSet：保证副本数量一直维持在期望值，并支持pod数量扩缩容，镜像版本升级
+- Deployment：通过控制ReplicaSet来控制Pod，并支持滚动升级、回退版本
+- Horizontal Pod Autoscaler：可以根据集群负载自动水平调整Pod的数量，实现削峰填谷
+- DaemonSet：在集群中的指定Node上运行且仅运行一个副本，一般用于守护进程类的任务
+- Job：它创建出来的pod只要完成任务就立即退出，不需要重启或重建，用于执行一次性任务
+- Cronjob：它创建的Pod负责周期性任务控制，不需要持续后台运行
+- StatefulSet：管理有状态应用
+
+
+
+## 4.1 ReplicaSet
+
+ReplicaSet主要作用是**保证一定数量的Pod正常运行**，会持续监听这些Pod的状态，一旦Pod发生故障，就会重启or重建，还支持扩缩容和镜像版本的更换
+
+![rs](p/rs.png)
+
+#### **资源清单**
+
+```yaml
+apiVersion: apps/v1 # 版本号
+kind: ReplicaSet # 类型       
+metadata: # 元数据
+  name: # rs名称 
+  namespace: # 所属命名空间 
+  labels: #rs的标签
+    controller: rs
+spec: # 详情描述
+  replicas: 3 # 副本数量
+  selector: # 选择器，通过它指定该控制器管理哪些pod
+    matchLabels:      # Labels匹配规则
+      app: nginx-pod
+    matchExpressions: # Expressions匹配规则
+      - {key: app, operator: In, values: [nginx-pod]}
+  template: # 模板，当副本数量不足时，会根据下面的模板创建pod副本
+    metadata: #pod的元数据
+      labels: #pod的标签
+        app: nginx-pod
+    spec: #pod的详情描述
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+        ports:
+        - containerPort: 80
+```
+
+#### 扩缩容
+
+* **kubectl edit**指令
+
+  ```shell
+  kubectl edit rs rs_name
+  ```
+
+* **kubectl scale**指令
+
+  ```shell
+  kubectl scale rs rs_name --replicas=4
+  ```
+
+#### 镜像版本变更
+
+* **kubectl edit**指令
+
+  ```shell
+  kubectl edit rs rs_name
+  ```
+
+* **kubectl set image** 指令
+
+  ```shell
+  kubectl set image rs nginx-rs nginx=nginx:1.17.1
+  ```
+
+
+
+## 4.2 Deployment
+
+Deployment管理ReplicaSet，ReplicaSet管理Pod
+
+![deployment](p/deployment.png)
+
+**Deployment支持如下功能**
+
+* 支持ReplicaSet所有功能
+* 支持发布的停止，继续
+* 支持滚动升级和回滚版本
+
+#### 资源清单
+
+```yaml
+apiVersion: apps/v1 # 版本号
+kind: Deployment # 类型       
+metadata: # 元数据
+  name: # rs名称 
+  namespace: # 所属命名空间 
+  labels: #标签
+    controller: deploy
+spec: # 详情描述
+  replicas: 3 # 副本数量
+  revisionHistoryLimit: 3 # 保留多少个历史版本
+  paused: false # 暂停部署，默认是false
+  progressDeadlineSeconds: 600 # 部署超时时间（s），默认是600
+  strategy: # 指定新Pod替换旧Pod的策略，有两种——重建策略和滚动更新
+    type: RollingUpdate # 使用滚动更新策略
+    rollingUpdate: # 滚动更新
+      maxSurge: 30% # 最大额外可以存在的副本数，可以为百分比，也可以为整数
+      maxUnavailable: 30% # 最大不可用状态的 Pod 的最大值，可以为百分比，也可以为整数
+  selector: # 选择器，通过它指定该控制器管理哪些pod
+    matchLabels:      # Labels匹配规则
+      app: nginx-pod
+    matchExpressions: # Expressions匹配规则
+      - {key: app, operator: In, values: [nginx-pod]}
+  template: # 模板，当副本数量不足时，会根据下面的模板创建pod副本
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+        ports:
+        - containerPort: 80
+```
+
+#### 扩缩容
+
+使用方法同ReplicaSet
+
+
+
+#### 镜像版本变更
+
+使用方法同ReplicaSet
+
+Deployment支持两种策略——**重建策略**和**滚动更新**，可以通过 **spec.strategy**来指定使用哪种策略**(默认使用滚动更新)**
+
+```yaml
+strategy: 
+  type: #指定策略; Recreate:重建策略，在创建出新的Pod之前会先杀掉所有已存在的Pod;RollingUpdate:滚动更新
+  rollingUpdata: #当type为RollingUpdate时生效
+    maxUnavailable: #用来指定在升级过程中不可用Pod的最大数量，默认为25%
+    maxSurge： #用来指定在升级过程中可以超过期望的Pod的最大数量，默认为25%。
+```
+
+**使用滚动更新策略**
+
+每次更新，Deploy都会再创建一个新的ReplicaSet，新ReplicaSet每成功启动一个新的Pod后，旧ReplicaSet才会关闭一个旧的Pod
+
+**使用重建策略**
+
+每次更新，Deploy先关闭旧ReplicaSet的所有Pod，然后创建一个新的ReplicaSet
+
+
+
+#### 版本回滚
+
+**kubectl rollout**： 版本升级相关功能，支持下面的选项：
+
+- status 显示当前升级状态
+- history 显示 升级历史记录
+- pause 暂停版本升级过程
+- resume 继续已经暂停的版本升级过程
+- restart 重启版本升级过程
+- undo 回滚到上一级版本（可以使用--to-revision回滚到指定版本）
+
+
+
+## 4.3 Horizontal Pod Autoscaler(HPA)
+
+HPA可以获取每个Pod利用率，然后和HPA中定义的指标进行对比，同时计算出需要伸缩的具体值，最后实现Pod的数量的调整**（自动伸缩）**
+
+![HPA](p/HPA.png)
+
+```yaml
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pc-hpa
+  namespace: dev
+spec:
+  minReplicas: 1  #最小pod数量
+  maxReplicas: 10 #最大pod数量
+  targetCPUUtilizationPercentage: 3 # CPU使用率指标
+  scaleTargetRef:   # 指定要控制的nginx信息
+    apiVersion:  /v1
+    kind: Deployment
+    name: nginx
+```
+
+
+
+## 4.4 DaemonSet(DS)
+
+DaemonSet类型的控制器可以保证在集群中的每一台（或指定）节点上都运行一个副本。一般适用于日志收集、节点监控等场景
+
+![daemonSet](p/daemonSet.png)
+
+**DaemonSet控制器的特点：**
+
+- 每当向集群中添加一个节点时，指定的 Pod 副本也将添加到该节点上
+- 当节点从集群中移除时，Pod 也就被垃圾回收了
+
+
+
+#### 资源清单
+
+```yaml
+apiVersion: apps/v1 # 版本号
+kind: DaemonSet # 类型       
+metadata: # 元数据
+  name: # rs名称 
+  namespace: # 所属命名空间 
+  labels: #标签
+    controller: daemonset
+spec: # 详情描述
+  revisionHistoryLimit: 3 # 保留历史版本
+  updateStrategy: # 更新策略
+    type: RollingUpdate # 滚动更新策略
+    rollingUpdate: # 滚动更新
+      maxUnavailable: 1 # 最大不可用状态的 Pod 的最大值，可以为百分比，也可以为整数
+  selector: # 选择器，通过它指定该控制器管理哪些pod
+    matchLabels:      # Labels匹配规则
+      app: nginx-pod
+    matchExpressions: # Expressions匹配规则
+      - {key: app, operator: In, values: [nginx-pod]}
+  template: # 模板，当副本数量不足时，会根据下面的模板创建pod副本
+    metadata:
+      labels:
+        app: nginx-pod
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+        ports:
+        - containerPort: 80
+```
+
+## 4.5 Job
+
+Job负责处理一次性任务
+
+**特点**
+
+- 当Job创建的pod执行成功结束时，Job将记录成功结束的pod数量
+- 当成功结束的pod达到指定的数量时，Job将完成执行
+
+![job](p/job.png)
+
+#### 资源清单
+
+```yaml
+apiVersion: batch/v1 # 版本号
+kind: Job # 类型       
+metadata: # 元数据
+  name: # 名称 
+  namespace: # 所属命名空间 
+  labels: #标签
+    controller: job
+spec: # 详情描述
+  completions: 1 # 指定job需要成功运行Pods的次数。默认值: 1
+  parallelism: 1 # 指定job在任一时刻应该并发运行Pods的数量。默认值: 1
+  activeDeadlineSeconds: 30 # 指定job可运行的时间期限，超过时间还未结束，系统将会尝试进行终止。
+  backoffLimit: 6 # 指定job失败后进行重试的次数。默认是6
+  manualSelector: true # 是否可以使用selector选择器选择pod，默认是false
+  selector: # 选择器，通过它指定该控制器管理哪些pod
+    matchLabels:      # Labels匹配规则
+      app: counter-pod
+    matchExpressions: # Expressions匹配规则
+      - {key: app, operator: In, values: [counter-pod]}
+  template: # 模板，当副本数量不足时，会根据下面的模板创建pod副本
+    metadata:
+      labels:
+        app: counter-pod
+    spec:
+      restartPolicy: Never # 重启策略只能设置为Never或者OnFailure;如果指定为OnFailure，则job会在pod出现故障时重启容器，而不是创建pod，failed次数不变;如果指定为Never，则job会在pod出现故障时创建新的pod，并且故障pod不会消失，也不会重启，failed次数加1
+      containers:
+      - name: counter
+        image: busybox:1.30
+        command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 2;done"]
+```
+
+## 4.6 CronJob(CJ)
+
+CronJob管理Job，Job控制器定义的作业任务在其控制器资源创建之后便会立即执行，CronJob控制Job的**运行时间点**和**重复运行方式**——**CronJob可以在特定的时间点(反复的)去运行job任务**
+
+![cronJob](p/cronJob.png)
+
+#### 资源清单
+
+```yaml
+apiVersion: batch/v1beta1 # 版本号
+kind: CronJob # 类型       
+metadata: # 元数据
+  name: # rs名称 
+  namespace: # 所属命名空间 
+  labels: #标签
+    controller: cronjob
+spec: # 详情描述
+  schedule: # 使用cron表达式——用于控制任务在什么时间执行
+  concurrencyPolicy: # 并发执行策略，用于定义前一次job运行尚未完成时是否以及如何运行后一次的job;Allow:允许Jobs并发运行(默认);Forbid:禁止并发运行,如果上一次Job运行尚未完成,则跳过下一次运行;Replace:替换，取消当前正在执行的job,运行新的Job
+  failedJobHistoryLimit: # 为失败的任务执行保留的历史记录数，默认为1
+  successfulJobHistoryLimit: # 为成功的任务执行保留的历史记录数，默认为3
+  startingDeadlineSeconds: # 启动作业错误的超时时长
+  jobTemplate: # job控制器模板，用于为cronjob控制器生成job对象;下面其实就是job的定义
+    metadata:
+    spec:
+      completions: 1
+      parallelism: 1
+      activeDeadlineSeconds: 30
+      backoffLimit: 6
+      manualSelector: true
+      selector:
+        matchLabels:
+          app: counter-pod
+        matchExpressions: 规则
+          - {key: app, operator: In, values: [counter-pod]}
+      template:
+        metadata:
+          labels:
+            app: counter-pod
+        spec:
+          restartPolicy: Never 
+          containers:
+          - name: counter
+            image: busybox:1.30
+            command: ["bin/sh","-c","for i in 9 8 7 6 5 4 3 2 1; do echo $i;sleep 20;done"]
+```
+
+
+
+# 5. Service
+
+Pod IP不固定，是动态分配的，所以我们不推荐直接使用Pod IP来访问Pod，为了方便访问Pod，我们提供了Service
+
+Service——对提供相同服务的Pod进行聚合，提供一个统一的访问入口，我们就可以通过Service提供的访问入口来访问Pod
+
+![service](p/service.png)
+
+
+
+## 5.1 kube-proxy
+
+Service只是一个概念，真正起作用的是 **kube-proxy**
+
+每个Node上都有一个 **kube-proxy**，当创建Service时，ApiServer会向etcd写入Service信息，每个Node上的kube-proxy基于监听机制发现Service的创建，然后 **将Service信息转换为对应的访问规则**
+
+![6](p/6.png)
+
+
+
+### kube-proxy支持三种工作模式
+
+#### 1. userspace模式
+
+![6](p/7.png)
+
+1. kube-proxy会为每个Service都分配一个监听端口
+
+2. Client访问Service的ClusterIP，该请求被iptables规则重定向到kube-proxy的监听端口上
+
+3. kube-proxy收到请求，根据LoadBalance算法选择一个Pod并与其建立连接，将请求转发给Pod
+
+kube-proxy充当一个四层负载均衡器的角色——稳定但是效率低
+
+
+
+#### 2. iptables模式
+
+1. kube-proxy为每个Pod建立iptables规则
+2. Client访问Service的ClusterIP，该ClusterIP会重定向为一个PodIP
+
+kube-proxy只负责创建iptables规则——效率高，但是无法提供灵活的LoadBalance策略
+
+#### 3. ipvs模式
+
+类似iptables模式，kube-proxy监控Pod的变化并创建相应的ipvs规则。ipvs相对iptables转发效率更高。除此以外，ipvs支持更多的LB算法。
+
+
+
+## 5.2 Service使用
+
+### 资源清单
+
+```yaml
+kind: Service  # 资源类型
+apiVersion: v1  # 资源版本
+metadata: # 元数据
+  name: service # 资源名称
+  namespace: dev # 命名空间
+spec: # 描述
+  selector: # 标签选择器，用于确定当前service代理哪些pod
+    app: nginx
+  type: # 指定service的访问方式
+  clusterIP:  # Service在集群内部的虚拟IP
+  sessionAffinity: # session亲和性，支持ClientIP、None两个选项
+  ports: # 端口信息
+    - protocol: TCP 
+      port: 3017  # service暴露的端口
+      targetPort: 5003 # pod端口
+      nodePort: 31122 # service在每台node上对外暴露的端口
+```
+
+**spec.type**
+
+- **ClusterIP**：默认值，它是Kubernetes系统自动分配的虚拟IP，只能在集群内部访问
+- **NodePort**：将Service通过指定的Node上的端口暴露给外部，通过此方法，就可以在集群外部访问服务
+- **LoadBalancer**：使用外接负载均衡器完成到服务的负载分发，注意此模式需要外部云环境支持
+- **ExternalName**： 把集群外部的服务引入集群内部，直接使用
+
+
+
+### Endpoint
+
+我们创建一个Service后
+
+```shell
+[root@master b-k8s]# kubectl describe service nginx-service -n dev
+Name:              nginx-service
+Namespace:         dev
+Labels:            <none>
+Annotations:       <none>
+Selector:          app=nginx
+Type:              ClusterIP
+IP:                10.96.184.123
+Port:              <unset>  80/TCP
+TargetPort:        80/TCP
+Endpoints:         10.100.1.54:80,10.100.1.55:80,10.100.2.26:80
+Session Affinity:  None
+Events:            <none>
+```
+
+Endpoint是Kubernetes中的一种资源对象，存储在etcd中，用来记录一个Service对应的所有Pod的PodIP
+
+Service和Pod之间的联系是通过Endpoint实现的
+
+![endpoint](p/endpoint.png)
+
+
+
+
+
+### 负载分发策略
+
+Service有两种负载分发策略
+
+- 如果不定义，默认使用kube-proxy的策略，比如随机、轮询
+
+- 基于客户端地址的会话保持模式，即来自同一个客户端发起的所有请求都会转发到固定的一个Pod上
+
+  此模式可以使在spec中添加`sessionAffinity:ClientIP`选项
+
+
+
+### HeadLiness Service
+
+HeadLiness Service——不分配ClusterIP，只能通过service的域名访问
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-headliness
+  namespace: dev
+spec:
+  selector:
+    app: nginx-pod
+  clusterIP: None # 将clusterIP设置为None，即可创建headliness Service
+  type: ClusterIP
+  ports:
+  - port: 80    
+    targetPort: 80
+```
+
+headliness-service
+
+
+
+### NodePort Service
+
+将Service的一个端口映射到每个Node的某个端口上，供外界访问
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-nodeport
+  namespace: dev
+spec:
+  selector:
+    app: nginx-pod
+  type: NodePort # service类型
+  ports:
+  - port: 80
+    nodePort: 30002 # 指定绑定的node的端口(默认的取值范围是：30000-32767), 如果不指定，会默认分配
+    targetPort: 80
+```
+
+
+
+### LoadBalance Service
+
+LoadBalancer和NodePort很相似，目的都是向外部暴露一个端口，区别在于LoadBalancer会在集群的外部再来做一个负载均衡设备，而这个设备需要外部环境支持的，外部服务发送到这个设备上的请求，会被设备负载之后转发到集群中。
+
+
+
+###  ExternalName Service
+
+ExternalName类型的Service用于引入集群外部的服务，它通过`externalName`属性指定外部一个服务的地址，然后在集群内部访问此service就可以访问到外部的服务了。
+
+![8](p/8.png)
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-externalname
+  namespace: dev
+spec:
+  type: ExternalName # service类型
+  externalName: www.baidu.com  #改成ip地址也可以
+```
+
+
+
+## 5.3 Ingress
+
+### 为什么需要Ingress？
+
+Service对集群之外暴露服务的主要方式有两种：NotePort和LoadBalancer，但是这两种方式，都有一定的缺点：
+
+- NodePort方式的缺点是会占用**很多**集群机器的**端口**，那么当集群服务变多的时候，这个缺点就愈发明显
+- LoadBalancer方式的缺点是每个service需要一个LoadBalancer，浪费、麻烦，并且需要kubernetes之外设备的支持
+
+Kubernetes提供了 Ingress资源，只需要一个NodePort就可以满足多个Service的需要
+
+![l](p/ingress.png)
+
+
+
+### Ingress如何工作
+
+**两个重要概念**
+
+* **Ingress**
+
+  定义请求如何转发到service的规则
+
+* **Ingress Controller**
+
+  具体实现反向代理及负载均衡的程序，对Ingress定义的规则进行解析，根据配置的规则来实现请求转发**（有很多种，Nginx，Contour, Haproxy等等）**
+
+> Ingress例子：以Nginx为例
+>
+> 1. 用户编写Ingress规则，说明域名与Service之间的对应关系
+> 2. Ingress Controller动态感知Ingress规则的变化，根据Ingress规则生成对应的Nginx配置
+> 3. Ingress Controller将生成的Nginx配置写入一个Nginx服务，并动态更新
+> 4. Nginx服务监听80和443端口，集群外用户访问这两个端口即可访问到集群内的服务，不需要多余的NodePort
+
+
+
+### 如何使用Ingress
+
+#### 1. 安装Ingress Controller
+
+```shell
+wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.30.0/deploy/static/mandatory.yaml
+wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.30.0/deploy/static/provider/baremetal/service-nodeport.yaml
+
+#修改mandatory.yaml中container的镜像
+#将quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.30.0修改为registry.cn-hangzhou.aliyuncs.com/google_containers/nginx-ingress-controller:0.30.0
+
+kubectl apply -f ./
+```
+
+
+
+#### 2. 创建Pod，Service
+
+#### 3. 创建Ingress—配置域名与Service的对应关系
+
+**创建Http Ingress**
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-http
+  namespace: dev
+spec:
+  rules:
+  - host: nginx.itheima.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: nginx-service
+          servicePort: 80
+  - host: tomcat.itheima.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: tomcat-service
+          servicePort: 8080
+```
+
+### 创建Https Ingress
+
+1. 创建证书，生成秘钥
+
+   ```shell
+   # 生成证书
+   openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/C=CN/ST=BJ/L=BJ/O=nginx/CN=itheima.com"
+   
+   # 创建密钥
+   kubectl create secret tls tls-secret --key tls.key --cert tls.crt
+   ```
+
+2. ```yaml
+   apiVersion: extensions/v1beta1
+   kind: Ingress
+   metadata:
+     name: ingress-https
+     namespace: dev
+   spec:
+     tls:
+       - hosts:
+         - nginx.itheima.com
+         - tomcat.itheima.com
+         secretName: tls-secret # 指定秘钥
+     rules:
+     - host: nginx.itheima.com
+       http:
+         paths:
+         - path: /
+           backend:
+             serviceName: nginx-service
+             servicePort: 80
+     - host: tomcat.itheima.com
+       http:
+         paths:
+         - path: /
+           backend:
+             serviceName: tomcat-service
+             servicePort: 8080
+   ```
+
+
+
+
+
+
+
+# 6. 数据存储
+
+Volume是Pod中能够被多个容器访问的共享目录，它被定义在Pod上，然后被一个Pod里的多个容器挂载到具体的文件目录下
+
+kubernetes通过Volume实现同一个Pod中不同容器之间的数据共享以及数据的持久化存储
+
+Volume的生命容器不与Pod中单个容器的生命周期相关，当容器终止或者重启时，Volume中的数据也不会丢失
+
+- 基本存储：EmptyDir、HostPath、NFS
+- 高级存储：PV、PVC
+- 配置存储：ConfigMap、Secret
+
+
+
+## 6.1 基本存储
+
+### 6.1.1 EmptyDir
+
+#### 介绍
+
+EmptyDir是在Pod被分配到Node时创建的，它的初始内容为空，并且无须指定宿主机上对应的目录文件，因为kubernetes会自动分配一个目录，当Pod销毁时， EmptyDir中的数据也会被永久删除
+
+![l](p/9.png)
+
+#### 用途
+
+- 临时空间，例如用于某些应用程序运行时所需的临时目录，且无须永久保留
+- Pod中的容器共享数据
+
+#### 使用
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-emptydir
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.17.1
+    ports:
+    - containerPort: 80
+    volumeMounts:  # 将logs-volume挂在到nginx容器中，对应的目录为 /var/log/nginx
+    - name: logs-volume
+      mountPath: /var/log/nginx
+  - name: busybox
+    image: busybox:1.30
+    command: ["/bin/sh","-c","tail -f /logs/access.log"] # 初始命令，动态读取指定文件中内容
+    volumeMounts:  # 将logs-volume 挂在到busybox容器中，对应的目录为 /logs
+    - name: logs-volume
+      mountPath: /logs
+  volumes: # 声明volume， name为logs-volume，类型为emptyDir
+  - name: logs-volume
+    emptyDir: {}
+```
+
+* **spec.volumes**——定义数据卷
+* **spec.containers.volumeMounts**——将数据卷挂载到容器中
+  * **mountPath**——数据卷挂载到容器中的路径
+
+### 6.1.2 HostPath
+
+如果想简单的将数据持久化到主机中，可以选择HostPath
+
+HostPath就是将Node主机中一个实际目录挂在到Pod中，以供容器使用，这样的设计就可以保证Pod销毁了，但是数据依据可以存在于Node主机上
+
+![l](p/10.png)
+
+
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: volume-hostpath
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.17.1
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: logs-volume
+      mountPath: /var/log/nginx
+  - name: busybox
+    image: busybox:1.30
+    command: ["/bin/sh","-c","tail -f /logs/access.log"]
+    volumeMounts:
+    - name: logs-volume
+      mountPath: /logs
+  volumes:
+  - name: logs-volume
+    hostPath: 
+      path: /root/logs
+      type: DirectoryOrCreate  # 目录存在就使用，不存在就先创建后使用
+```
+
+> ```
+> 关于type的值的一点说明：
+>     DirectoryOrCreate 目录存在就使用，不存在就先创建后使用
+>     Directory   目录必须存在
+>     FileOrCreate  文件存在就使用，不存在就先创建后使用
+>     File 文件必须存在 
+>     Socket  unix套接字必须存在
+>     CharDevice  字符设备必须存在
+>     BlockDevice 块设备必须存在
+> ```
+
+### 6.1.3 NFS
+
+NFS是一个网络文件存储系统，可以搭建一台NFS服务器，然后将Pod中的存储直接连接到NFS系统上，这样的话，无论Pod在节点上怎么转移，只要Node跟NFS的对接没问题，数据就可以成功访问。
+
+![l](p/11.png)
+
+
+
+## 6.2 高级存储
+
+### 6.2.1 PV
+
+### 6.2.2 PVC
+
+## 6.3 配置存储
+
+### 6.3.1 ConfigMap
+
+ConfigMap是比较特殊的数据卷，主要用来存储配置
+
+#### 创建ConfigMap
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap
+  namespace: dev
+data:
+  info: |
+    username:admin
+    password:123456
+```
+
+#### 使用ConfigMap
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-configmap
+  namespace: dev
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.17.1
+    volumeMounts: # 将configmap挂载到目录
+    - name: config
+      mountPath: /configmap/config
+  volumes: # 引用configmap
+  - name: config
+    configMap:
+      name: configmap
+```
+
+我们在ConfigMap中写入的key-value，会在mountPath下生成一个info文件，ConfigMap的内容都写入该info文件
+
+
+
+### 6.3.2 Secret
+
+与ConfigMap十分相似，它主要用于存储敏感信息，例如密码、秘钥、证书等等
+
+#### Secret的使用
+
+1. 将要存储的数据进行加密处理
+
+   ```shell
+   echo -n 'admin' | base64 
+   echo -n '123456' | base64 
+   ```
+
+2. 创建Secret
+
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: secret
+     namespace: dev
+   type: Opaque
+   data:
+     username: YWRtaW4=
+     password: MTIzNDU2
+   ```
+
+3. 挂载Secret
+
+   ```yaml
+   apiVersion: v1
+   kind: Pod
+   metadata:
+     name: pod-secret
+     namespace: dev
+   spec:
+     containers:
+     - name: nginx
+       image: nginx:1.17.1
+       volumeMounts: # 将secret挂载到目录
+       - name: config
+         mountPath: /secret/config
+     volumes:
+     - name: config
+       secret:
+         secretName: secret
+   ```
+
+   
