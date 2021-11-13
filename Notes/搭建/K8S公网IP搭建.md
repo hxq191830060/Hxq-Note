@@ -156,7 +156,7 @@ ifconfig eth0:1 公网IP #临时创建虚拟网卡，重启服务器会消失
   # the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.
   EnvironmentFile=-/etc/sysconfig/kubelet
   ExecStart=
-  ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS --node-ip=101.34.16.177
+  ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS --node-ip=101.34.16.177cle
   
   ```
 
