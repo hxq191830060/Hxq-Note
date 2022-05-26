@@ -5,6 +5,6 @@
 启动Jenkins
 
 ```
-nohup java -DJENKINS_HOME=/home/jenkins/root -jar /home/jenkins/jenkins.war --httpPort=30888 &
+nohup java -DJENKINS_HOME=/home/jenkins/root -jar /home/jenkins/jenkins.war --httpPort=30888 > /home/jenkins/jenkins.log 2>&1 &
 ```
 
