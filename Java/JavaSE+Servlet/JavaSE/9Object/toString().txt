@@ -1,8 +1,0 @@
-1，Object中定义了toString( )方法，该方法可以获取一个对象的完整信息
-
-例子：默认的toString( )实现
-Person per=new Person( );
-System.out.println(per); <=> System.out.println(per.toString( ) );
-上面两个表达式是相同的，直接输出per，在JVM中会默认调用toString( );
-
-2，我们一般对toString( )进行覆写，用于返回类的信息
