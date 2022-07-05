@@ -1,14 +1,10 @@
 如果未说明版本，那么默认为**JDK1.8**
 
-
-
 # 1. HashMap数据结构
 
 HashMap采用 **数组+链表+红黑树** 来存储元素
 
 ![HashMap数据结构.drawio](p/HashMap数据结构.drawio.png)
-
-
 
 # 2. HashMap方法
 
@@ -19,8 +15,8 @@ HashMap采用 **数组+链表+红黑树** 来存储元素
 * 构造方法仅仅初始化 **loadFactor**和 **threshold**，不会初始化哈希表数组table以及entrySet
 
 * 如果传递了initialCapacity参数，那么threshold为tableSizeFor计算出来的值
-
-  如果没有，那么threshold不会在构造方法中初始化，而是在第一次调用put时，初始化为**DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY(12)**
+  
+  如果没有，那么threshold不会在构造方法中初始化，而是在第一次调用put时，初始化为**DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY(16)**
 
 ## 2.2 哈希函数，计算索引
 
@@ -36,13 +32,9 @@ reutrn (key==null)?0:(h=key.hashCode())^(h>>>16);//h>>>16表示取高16位
 hash&(table.length-1)
 ```
 
-
-
 ## 2.3 put
 
 ![HashMap的put.drawio](p/HashMap的put.drawio.png)
-
-
 
 * 如果**找到了hash和key相同的节点**，那么修改其值就结束了
 
@@ -53,22 +45,18 @@ hash&(table.length-1)
   * **单个链表的元素个数>=TREEIFY_THRESHOLD(8)**
   
   * **table的长度>=MIN_TREEIFY_CAPACITY(64)**
-  
+    
     > 如果链表元素个数>=8，但是table长度<64，那么不会进化为红黑树，而是对table扩容
-  
-* **数组扩容的情况**
 
+* **数组扩容的情况**
+  
   * 第一次调用put方法——构造方法不会初始化table，所以第一次调用put时，会通过resize()来初始化table
   * 在链表中插入一个元素后，链表元素个数>=8 ，但是table长度<64，那么会对数组进行扩容
   * 插入一个元素后，如果键值对个数> threshold，那么会对数组进行扩容
 
-
-
 ## 2.4 resize扩容
 
 ![HashMap的resize.drawio](p/HashMap的resize.drawio.png)
-
-
 
 ## 2.5 get
 
@@ -92,8 +80,6 @@ hash&(table.length-1)
 
 如果发生了删除操作，那么 **modCount自增**，**size自减**
 
-
-
 # 3. HashMap的数组长度总是2的n次方
 
 HashMap通过 **hash&(table.length-1)**来计算索引
@@ -102,15 +88,11 @@ HashMap通过 **hash&(table.length-1)**来计算索引
 
 由于length是2的整数幂，length-1的二进制中低位就全是1，高位全部是0。在与hash值进行&运算时，低位的值总是与原来hash值相同，高位&运算时值为0。这就保证了不同的hash值发生碰撞的概率比较小，这样就会使得数据在table数组中分布较均匀，查询速度也较快
 
-
-
 # 4. HashMap的线程不安全
 
 JDK1.7——死循环，数据丢失，数据覆盖
 
 JDK1.8——数据覆盖（并发put）
-
-
 
 ## 4.1 JDK1.7—扩容导致的死循环
 
@@ -139,21 +121,21 @@ void transfer(Entry[] newTable) {
   //src引用了旧的Entry数组
   Entry[] src = table; 
   int newCapacity = newTable.length;
- 
+
   for (int j = 0; j < src.length; j++) {
     Entry<K,V> e = src[j]; //取得旧Entry数组的每个元素
     if (e != null) {
       src[j] = null;//释放旧Entry数组的对象引用（for循环后，旧的Entry数组不再引用任何对象）
-  	do {
-   		Entry<K,V> next = e.next;//如果一个线程执行到这里挂起，另一个线程完成transfer操作，当该线程继续运行就可能导致死循环
-   		int i = indexFor(e.hash, newCapacity); //计算元素在新数组中的位置
+      do {
+           Entry<K,V> next = e.next;//如果一个线程执行到这里挂起，另一个线程完成transfer操作，当该线程继续运行就可能导致死循环
+           int i = indexFor(e.hash, newCapacity); //计算元素在新数组中的位置
 
-   		e.next = newTable[i]; 
-   		newTable[i] = e; //头插法插入元素
-   		e = next; //访问下一个元素
-   		} while (e != null);
-  	}
- 	}
+           e.next = newTable[i]; 
+           newTable[i] = e; //头插法插入元素
+           e = next; //访问下一个元素
+           } while (e != null);
+      }
+     }
 }
 ```
 
@@ -162,10 +144,11 @@ void transfer(Entry[] newTable) {
 * JDK1.7中HashMap采用的是 **头插法**
 
 * 扩容时，遍历每一个slot，对于一个slot中的链表进行如下操作
+  
   * 遍历链表，计算链表中每个节点在新数组中的索引，然后将其插入到新数组中的新位置中
   
   * 这里插入采用的是 **头插法(将节点插入到原有链表的头部)**，头插法会导致链表的顺序翻转，会导致死循环
-  
+    
     ![HashMap死循环问题.drawio1](p/HashMap死循环问题.drawio1.png)
     
     ![HashMap死循环问题.drawio1](p/HashMap死循环问题.drawio2.png)
@@ -176,18 +159,10 @@ void transfer(Entry[] newTable) {
     
     ![HashMap死循环问题.drawio1](p/HashMap死循环问题.drawio5.png)
 
-
-
-
-
 ## 4.2 JDK1.8—扩容导致数据覆盖
 
 * 并发put时候，2个线程同时执行到 **(计算索引，判定索引位置是否为空)**，假设该位置为空，A线程执行完该判断操作后挂起，B执行该操作，然后往该位置设置了节点，然后A也往该位置设置了节点——导致数据覆盖
 * 代码末尾的++size，也会导致数据覆盖——多个线程执行++size，但是
-
-
-
-
 
 # 5. JDK1.7的HashMap
 
