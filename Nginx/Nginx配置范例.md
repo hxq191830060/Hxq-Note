@@ -43,8 +43,8 @@ http {
     }
     server {
         listen 443 ssl default_server;
-	ssl_protocols TLSv1.2;
-	ssl_certificate     /dev/shm/ssl/zoomdev_chained.crt;
+    ssl_protocols TLSv1.2;
+    ssl_certificate     /dev/shm/ssl/zoomdev_chained.crt;
         ssl_certificate_key /dev/shm/ssl/zoomdev_us.key;
         location / {
             proxy_pass http://globalIdConsole;
@@ -52,4 +52,3 @@ http {
    }
 }
 ```
-
