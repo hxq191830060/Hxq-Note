@@ -18,5 +18,3 @@
      * 镜像扫描工具：Clair，Anchore
      * 木马病毒扫描工具：ClamAV
   10. 容器化——Docker，Kubernetes
-
-

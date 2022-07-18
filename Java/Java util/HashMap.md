@@ -2,7 +2,7 @@
 
 # 1. HashMap数据结构
 
-HashMap采用 **数组+链表+红黑树** 来存储元素
+HashMap底层是一个哈希表，这个哈希表的每一个桶可以存储一个链表or红黑树
 
 ![HashMap数据结构.drawio](p/HashMap数据结构.drawio.png)
 
@@ -34,7 +34,7 @@ hash&(table.length-1)
 
 ## 2.3 put
 
-![HashMap的put.drawio](p/HashMap的put.drawio.png)
+<img src="p/HashMap的put.drawio.png" title="" alt="HashMap的put.drawio" width="919">
 
 * 如果**找到了hash和key相同的节点**，那么修改其值就结束了
 
@@ -82,7 +82,7 @@ hash&(table.length-1)
 
 # 3. HashMap的数组长度总是2的n次方
 
-HashMap通过 **hash&(table.length-1)**来计算索引
+HashMap通过 hash&(table.length-1)来计算索引
 
 底层数组长度是2的n次方，该计算效率最高
 

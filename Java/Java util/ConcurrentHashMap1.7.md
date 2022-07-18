@@ -1,18 +1,16 @@
 # 1. 数据结构
 
-![ConcurrentHashMap1.7.drawio](p/ConcurrentHashMap1.7.drawio.png)
+<img src="p/ConcurrentHashMap1.7.drawio.png" title="" alt="ConcurrentHashMap1.7.drawio" width="709">
 
 * JDK1.7的HashMap由一个个Segment组成——采用 **锁分段技术**
 * 每个Segment都是一个带锁的 HashEntry数组，HashEntry数组中每个桶都是一个链表
 * Segment中读写操作很多都是通过Unsafe实现的
 
-
-
 # 2. 方法
 
 ## 2.1 构造方法
 
-根据传入的参数initialCapacity和concurrentLevel，计算出**每个Segment中的table的大小（必须为2的n次方）**和Segment数组的大小
+根据传入的参数initialCapacity和concurrentLevel，计算出每个Segment中的table的大小（必须为2的n次方）和Segment数组的大小
 
 创建一个Segment对象，将其设置为Segment数组中中的第一个元素（Segment数组中只有一个元素，这个Segment是原型对象）
 
@@ -21,8 +19,6 @@
 ## 2.2 put
 
 ![ConcurrentHashMap1.7的put.drawio](p/ConcurrentHashMap1.7的put.drawio.png)
-
-
 
 ## 2.2 rehash()
 
@@ -41,12 +37,10 @@
 
 然后通过hash计算在Segment的table中的索引，然后遍历链表取出
 
-
-
 ## 2.4 size
 
 1. 不断循环，每轮循环都会遍历Segment数组中的每个Segment然后统计各个Segment中的键值对数目，得到总和
-
+   
    必须连续2次统计得到的总和相等，才能返回
 
 2. 如果循环超过了一定次数还没返回，那么就会强制获得所有Segment的锁，然后统计其数目，统计完后释放锁

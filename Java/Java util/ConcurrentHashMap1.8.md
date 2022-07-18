@@ -4,8 +4,6 @@ ConcurrentHashMap中JDK1.8的底层存储结构与JDK1.8的HashMap是一样的�
 
 JDK1.8中ConcurrentHashMap的结构与基本属性变量，初始化逻辑都与HashMap差不多
 
-
-
 ConcurrentHashMap添加了以下新的字段
 
 ![ConcurrentHashMap1.8.drawio](p/ConcurrentHashMap1.8.drawio.png)
@@ -15,8 +13,6 @@ ConcurrentHashMap添加了以下新的字段
   * sizeCtl为正数——下一个扩容阈值
   * sizeCtl为0——数组还没有被初始化
 * **counterCells**：用于计数，统计键值对数目
-
-
 
 ### 1.1 节点类型
 
@@ -38,8 +34,6 @@ Node以下有4个子类
 * TreeBin可以放在桶中
 * TreeNode不可以放在桶中，红黑树节点
 
-
-
 ## 2. ConcurrentHashMap线程安全
 
 ConcurrentHashMap通过**CAS+synchronized**保证并发环境下的线程安全
@@ -47,9 +41,8 @@ ConcurrentHashMap通过**CAS+synchronized**保证并发环境下的线程安全
 * ConcurrentHashMap中查找元素，替换元素，赋值元素都是通过Unsafe的原子操作实现
 
 * ConcurrentHashMap的锁粒度为**Node**
+
 * ConcurrentHashMap允许多个线程同时帮助扩容
-
-
 
 ## 3. 哈希函数
 
@@ -72,10 +65,6 @@ return (h ^ (h >>> 16)) & HASH_BITS;
 1. Node数组采用volatile来修饰——保证对整个数组的引用在不同线程之间可见，但并不保证数组内部的元素在各个线程之间可见，所以访问数组中某个位置的元素不能通过下标来访问
 2. 通过CAS来访问数组中某个位置的元素
 
-
-
-
-
 ## 5. initTable
 
 如果多个线程同时执行initTable()
@@ -83,8 +72,6 @@ return (h ^ (h >>> 16)) & HASH_BITS;
 那么只有一个线程可以通过CAS将 sizeCtl更新为-1，然后创建table，创建完成后会更新 **sizeCtl为下一次扩容的阈值**
 
 其余线程不断自旋直到table创建完毕
-
-
 
 ## 6. addCount与size
 
@@ -100,8 +87,6 @@ return (h ^ (h >>> 16)) & HASH_BITS;
 
 ### 6.2 addCount(难点)
 
-
-
 ## 7. helpTransfer和transfer(难点)
 
 ## 8. get
@@ -111,4 +96,3 @@ return (h ^ (h >>> 16)) & HASH_BITS;
 3. 根据桶的根节点的类型进行相应的操作（链表or红黑树）
 
 **get通过Unsafe来保证线程安全**
-
